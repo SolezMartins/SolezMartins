@@ -1,16 +1,23 @@
-## Hi there 👋
+<!-- Create a PUBLIC repo named exactly "SolezMartins" and save this as its README.md -->
+<!-- It then appears at the top of github.com/SolezMartins -->
 
-<!--
-**SolezMartins/SolezMartins** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+# Hi, I'm Martin 👋
 
-Here are some ideas to get you started:
+**Software Developer & IT Systems Support · Nairobi, Kenya** — available now for full-time, contract or remote work.
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+I started on the hardware side (PCB repair, fiber splicing, smart-meter firmware) and now build full-stack products:
+POS systems, school and property management platforms, and a ride-hailing app.
+
+🔗 **Portfolio (interactive terminal):** https://marttin-wangari.vercel.app
+📫 **Email:** martindevs07@gmail.com · **WhatsApp:** +254 740 208 683
+💼 **LinkedIn:** https://linkedin.com/in/martin-wangari-586903230
+
+## What I work with
+`JavaScript` `React` `Python` `PHP` `PostgreSQL` `Supabase` `REST APIs` `Postman` `Power BI` `Office 365` `AI tools & automation`
+
+## Featured work
+- **Terminal portfolio** — this site's source: vanilla JS, strict CSP, crawlable fallback
+- **Mpambe Hotel POS** · **Maxland Properties PMS** · **Benuru / Joyrinah School Systems** — interactive demos
+- **Ride-hailing platform** — React + Supabase, real-time dispatch (in progress)
+
+<!-- Pin your best 4–6 repos on your profile (Customize your pins), each with a short README and a screenshot. -->
