@@ -1,0 +1,11 @@
+create table instruments (symbol text primary key, display_name text, market text, submarket text, pip numeric, is_open boolean, updated_at timestamptz default now());
+create table candles (symbol text references instruments, timeframe text, ts timestamptz, open numeric, high numeric, low numeric, close numeric, primary key (symbol, timeframe, ts));
+create table watchlists (id uuid primary key default gen_random_uuid(), user_id uuid references auth.users not null, name text not null, is_default boolean default false);
+create table watchlist_items (watchlist_id uuid references watchlists on delete cascade, symbol text references instruments, position int, primary key (watchlist_id, symbol));
+create table alerts (id uuid primary key default gen_random_uuid(), user_id uuid references auth.users not null, symbol text, kind text, params jsonb, active boolean default true);
+create table trade_journal (id uuid primary key default gen_random_uuid(), user_id uuid references auth.users not null, symbol text, direction text, entry numeric, stop numeric, target numeric, result text, strategy text, notes text, created_at timestamptz default now());
+alter table watchlists enable row level security; alter table watchlist_items enable row level security; alter table alerts enable row level security; alter table trade_journal enable row level security;
+create policy own_wl on watchlists for all using (user_id = auth.uid());
+create policy own_wli on watchlist_items for all using (exists (select 1 from watchlists w where w.id = watchlist_id and w.user_id = auth.uid()));
+create policy own_alerts on alerts for all using (user_id = auth.uid());
+create policy own_journal on trade_journal for all using (user_id = auth.uid());

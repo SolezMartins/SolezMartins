@@ -1,0 +1,1 @@
+{"name":"@dmi/worker-backtesting","private":true,"type":"module","scripts":{"dev":"tsx watch src/main.ts"},"dependencies":{"@dmi/types":"*","@dmi/strategies":"*"}}

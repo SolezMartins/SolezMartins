@@ -1,103 +1,103 @@
-<div align="center">
-  <img src="assets/banner.svg" width="100%" alt="Martin Wangari — Software Developer and IT Systems Support Technician" />
-</div>
+# Deriv Market Intelligence
+Analysis-only platform for Deriv synthetic markets. **No trade execution anywhere.**
 
-<h1 align="center">Hi, I'm Martin Wangari</h1>
+## Run
+```
+npm install
+cp .env.example .env   # GEMINI_API_KEY optional
+npm run dev:api        # http://localhost:3001
+npm run dev:web        # http://localhost:5173
+```
+## Layout
+`packages/*` deterministic engine (indicators, market-structure, liquidity, supply-demand, strategies) · `packages/ai` provider-agnostic AI (Gemini) · `apps/api` Fastify + Deriv public WebSocket · `apps/web` React + Lightweight Charts · `supabase/migrations` schema + RLS.
 
-<p align="center">
-  <strong>Software Developer · IT Systems Support Technician</strong><br />
-  Nairobi, Kenya · Building practical digital solutions and keeping technology running reliably.
-</p>
+## Built (MVP core)
+Dynamic instrument discovery, historical candles per timeframe, EMA/RSI/MACD/ATR, swings, HH/HL/LH/LL, BOS/CHOCH, equal levels, sweeps, FVG, bias, transparent confluence score, optional Gemini explanations (cached, fails gracefully), status endpoint, rate limiting.
 
-<p align="center">
-  <a href="https://marttin-wangari.vercel.app/">Portfolio</a> ·
-  <a href="https://linkedin.com/in/martin-wangari-586903230">LinkedIn</a> ·
-  <a href="mailto:martindevs07@gmail.com">Email</a> ·
-  <a href="https://github.com/SolezMartins">GitHub</a>
-</p>
+Also built: `/api/scanner` (all instruments, filters: category, bias, minScore), `/api/mtf/:symbol` (HTF→LTF alignment), scanner table in the UI.
 
----
+Also built: live ticks -> server-side candle builder -> analysis on candle close -> single-shot alerts (price level, BOS, CHOCH, sweep, FVG, zone entry, confluence) pushed over `/ws` with browser notifications; supply/demand zones (fresh/tested/invalidated); REST CRUD for watchlists, alerts and journal (`/api/watchlists|alerts|journal`, file-backed in `data/store.json`).
 
-## About Me
+## Auth & persistence (Supabase)
+**Migrations.** New project: paste `supabase/all_migrations.sql` (0001 to 0010 in order) into the Supabase SQL editor, or run the files one by one. Existing project: run only the files you have not run yet (for this release, `0009_journal_tracking.sql` if missing, and `0010_scenario_status.sql`); the two newest are safe to re-run, the older ones are not, so do not paste `all_migrations.sql` into a project that already has them. The API keeps working on an older schema: signals are still journaled, just without outcome tracking (no 0009) or without scenario status (no 0010).
+1. Create a Supabase project, enable email auth, run `supabase/migrations/0001_core.sql` then `0002_auth_persistence.sql`.
+2. Fill `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` in the API `.env` (service key stays server-side) and `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in `apps/web/.env`.
+3. With all three API vars set, every `/api/*` route (except `/api/status`) and `/ws` require a valid Supabase session; watchlists, alerts and journal are stored per user in Postgres with RLS. With none set, the app runs single-user with the local file store.
 
-I'm a technology professional based in Nairobi, Kenya, combining hands-on IT support experience with practical software development. I build web applications and business solutions, troubleshoot hardware and software issues, support users, and work with networking and server technologies.
+## Market-data persistence & retention (Supabase mode)
+Run `0003_market_data_retention.sql` (and `0004_backtests_chat.sql` for saved backtests and chat history). The API then upserts instruments (every 6h) and closed candles (batched every 10s; history is backfilled when a stream is first watched and re-filled after a Deriv reconnect). Raw ticks are stored only if `PERSIST_TICKS=true`. `prune_market_data()` runs every 6h with the `RETENTION_*` settings in `.env.example` (defaults: ticks 24h; 1m-5m 30d; 15m-1h 180d; 2h-1d 730d). Gap recovery covers the last 500 candles per stream. Without Supabase nothing is stored.
 
-- **Software development:** Web applications, business tools, and full-stack projects.
-- **IT support:** Hardware and software troubleshooting, printer support, and end-user training.
-- **Infrastructure:** Wi-Fi technologies, networking, and server support.
-- **Currently open to:** Remote IT Support, Technical Support, Software Development, and related opportunities.
+## Screens
+Dashboard (chart, bias, alerts, scanner, default-watchlist chips), Watchlists (create, rename, delete, default, add/remove/reorder markets, live conditions from the scanner), Journal (manual entries, editable results, statistics from your own records). Journal entries can carry a screenshot (see below).
 
-## Featured Projects
+## Historical analysis
+`GET /api/history/:symbol?tf=&limit=&to=` returns candles (stored candles first; older or missing ranges are filled from Deriv and saved) plus replay-safe events: BOS/CHOCH, sweeps, FVG created/filled, zones and swings. The History tab has a replay slider and play/pause, event filters and an "up to date" jump; up to 2000 candles per request. FVG and zone boxes are listed, not drawn on the chart. Gaps inside stored data are not detected; a window is rebuilt from Deriv only when stored data doesn't reach it.
 
-> Add your own project screenshots to the `assets/` folder and replace the sample image paths and project links below before publishing.
+## Backtesting
+`POST /api/backtest` (Backtest tab). Rules: direction, required aligned events (sweep, BOS, CHOCH, FVG, zone) within N candles, optional higher-timeframe trend filter (resampled from the same candles, usable only after the HTF candle closes), ATR stop, R-multiple target, max hold. Signal on candle close, entry at the next open, one trade at a time, same-candle stop+target counts as a stop, unresolved trades are discarded. Reports setups, winners, losers, win rate, avg/total R, profit factor, avg win/loss, max drawdown (R), streaks and average duration, for all data plus in-sample (first 70%) and out-of-sample (last 30%). Up to 5000 candles per run. Fees and slippage are off by default and can be switched on with two assumptions: **Slippage** (a fraction of ATR, applied against you on the market entry and on stop and timeout exits; targets are limit fills and do not slip) and **Fees** (a flat cost in R per trade, for fees plus spread). They are your assumptions, not Deriv's actual charges, and spikes on Boom/Crash/Jump can still gap through stops. The Evidence card on the market page takes the same two inputs. Tick "Save this run" to keep a run (latest 50 per user): saved runs are written by the server from the engine's own output, never supplied by the browser, and can be reopened or deleted. Results come only from the engine; AI never touches them.
 
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>Mpambe Hotel POS</h3>
-      <p>A point-of-sale project for hospitality operations. Highlight the features you have implemented, such as sales, inventory, or reporting.</p>
-      <p><strong>Stack:</strong> Add the technologies used in this project.</p>
-      <p><a href="https://github.com/SolezMartins">View repositories →</a></p>
-    </td>
-    <td width="50%" valign="top">
-      <h3>Maxland Properties PMS</h3>
-      <p>A property management project focused on organizing property information and management workflows.</p>
-      <p><strong>Stack:</strong> Add the technologies used in this project.</p>
-      <p><a href="https://github.com/SolezMartins">View repositories →</a></p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>GO-BODA</h3>
-      <p>A ride-hailing project focused on booking and dispatch workflows.</p>
-      <p><strong>Stack:</strong> React · Supabase (where applicable)</p>
-      <p><a href="https://github.com/SolezMartins">View repositories →</a></p>
-    </td>
-    <td width="50%" valign="top">
-      <h3>Interactive Developer Portfolio</h3>
-      <p>A portfolio showcasing selected projects, technical skills, and development work.</p>
-      <p><a href="https://marttin-wangari.vercel.app/">Visit portfolio →</a></p>
-    </td>
-  </tr>
-</table>
+## Tests
+`npm test` runs engine regression tests (structure on trends, swing de-duplication, zones, lookahead-free replay, finite backtest output) with Node 22.6+ built-in type stripping.
 
-## Technical Skills
+## Analysis engine
+Indicators: EMA 20/50/100/200, SMA 50, RSI, MACD, ROC(10), ATR, average candle range, volatility regime (expanding/normal/contracting vs the prior 50 candles), candlestick patterns (doji, hammer, shooting star, engulfing). Structure: HH/HL/LH/LL, BOS/CHOCH (latest within 20 candles), range/expansion/trend state, HTF structure (the same candles resampled x4, closed candles only, so no extra data requests). Levels: recent swing support/resistance plus major levels (repeated reaction zones, 2+ swing touches within 0.5 ATR). Zones carry distance from price; FVGs carry fill percentage. **Confluence** (0-100, not a win probability) is the sum of 11 components that each count only if they agree with the bias: HTF 15, structure 12, EMA 10, momentum 12, liquidity sweep 8, BOS/CHOCH 8, supply/demand 10, FVG 5, S/R location 8, volatility 5, risk/reward 7. Bias uses five votes (structure, EMA, MACD, RSI, HTF).
 
-### Development
+## Alert semantics
+Alerts are one-shot and fire on **new** things only: `price_level` and `rsi` fire when the level is *crossed* (not when price is already beyond it), `confluence` when the score crosses up through the threshold, `enter_demand` / `enter_supply` / `zone_enter` when price moves into a zone from outside, and `bos`, `choch`, `sweep`, `fvg` (gap created), `fvg_filled`, `ema_cross` (EMA20/50) when that event happens on the candle that just closed. Event alerts may be restricted to `bullish`/`bearish`. **Scenario alerts** (`scenario_in_zone`, `scenario_invalidated`, `scenario_target`) fire when the live status of the market's current scenario changes to that status, checked on every price tick against the scenario from the last closed candle (same status rules as the market page); a bullish/bearish filter is optional. When a new candle closes and the scenario changes, the baseline is reset, so only price moving into the status fires, never a status that was already true. Baselines are seeded when a stream starts, so existing conditions don't fire. They only evaluate on streamed symbols.
 
-![JavaScript](https://img.shields.io/badge/JavaScript-0D1117?style=for-the-badge&logo=javascript&logoColor=F7DF1E)
-![TypeScript](https://img.shields.io/badge/TypeScript-0D1117?style=for-the-badge&logo=typescript&logoColor=3178C6)
-![React](https://img.shields.io/badge/React-0D1117?style=for-the-badge&logo=react&logoColor=61DAFB)
-![Python](https://img.shields.io/badge/Python-0D1117?style=for-the-badge&logo=python&logoColor=3776AB)
-![PHP](https://img.shields.io/badge/PHP-0D1117?style=for-the-badge&logo=php&logoColor=777BB4)
-![HTML5](https://img.shields.io/badge/HTML5-0D1117?style=for-the-badge&logo=html5&logoColor=E34F26)
-![CSS3](https://img.shields.io/badge/CSS3-0D1117?style=for-the-badge&logo=css3&logoColor=1572B6)
+## Connection handling
+The browser socket reconnects automatically (exponential backoff with jitter, fresh auth token, resubscribe), refetches data after a reconnect to fill missed candles, and shows "Browser stream reconnecting..." in the header. The server pings every 30s and drops dead sockets. An app-wide alerts socket delivers alerts on every tab.
 
-### Databases, APIs & Tools
+## Run modes (Redis is optional)
+- **Default (`ROLE=all`)**: one process, in-memory event bus, no Redis. Right for development and small deployments.
+- **Split mode** (for scale): start Redis (`docker compose up -d`), set `REDIS_URL`, then run `ROLE=api npm run dev:api`, `npm run dev:ingest` (Deriv streaming, candle builder, analysis, alerts) and optionally `npm run dev:bt-worker` (BullMQ backtest jobs). The API and ingest worker talk over Redis pub/sub; backtests run in the worker so they don't block the API. `ROLE=api` or workers without `REDIS_URL` refuse to start. If no backtest worker is running in split mode, backtest requests time out after 30s.
+The repo-root `.env` is now loaded automatically by the API and workers. Workers cover market-data, candle building, analysis and alerts in one `market-data` process, plus `backtesting`.
 
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-0D1117?style=for-the-badge&logo=postgresql&logoColor=4169E1)
-![Supabase](https://img.shields.io/badge/Supabase-0D1117?style=for-the-badge&logo=supabase&logoColor=3FCF8E)
-![REST APIs](https://img.shields.io/badge/REST_APIs-0D1117?style=for-the-badge)
-![Git](https://img.shields.io/badge/Git-0D1117?style=for-the-badge&logo=git&logoColor=F05032)
-![GitHub](https://img.shields.io/badge/GitHub-0D1117?style=for-the-badge&logo=github&logoColor=FFFFFF)
-![Postman](https://img.shields.io/badge/Postman-0D1117?style=for-the-badge&logo=postman&logoColor=FF6C37)
+## UI
+Tailwind + shadcn-style design system: dark-first tokens in `apps/web/src/index.css` (background matches the chart canvas), primitives in `src/components/ui` (button, badge; `components.json` is set up so `npx shadcn@latest add <component>` works), lucide icons, sidebar shell, and a header with live feed status (LIVE / DATA DELAYED / DISCONNECTED, with age) and AI status. Existing screens are styled through global element rules in `index.css`; converting them to per-component shadcn classes is incremental.
 
-### IT Support & Infrastructure
+## AI Analyst chat and market overview
+`POST /api/ai/chat` (AI Analyst tab): resolves the markets and timeframes in the question (V75, "Volatility 75", "4H and 15M"; a category question like "across Volatility indices" uses a scan of that category; otherwise the selected market), runs the deterministic engine, and sends only those structured facts (snapshots, the last 8 events per market, category counts) to the AI. The reply shows the analysis tables used, so every claim can be checked. If the AI is off or out of quota, the answer is replaced by a notice and the tables still show. Limits: 500-character questions, 10 chats/minute, up to 4 markets and 6 snapshots per question, chats are saved for review (conversation list in the AI Analyst tab), but each question is analysed fresh: the AI never sees earlier answers.
+`GET /api/overview?tf=` (Dashboard, "Market overview"): bullish/bearish/neutral counts and average confluence per category, from a real scan of every discovered market. Categories come from display names, so new Deriv markets are picked up automatically.
 
-- Hardware and software troubleshooting
-- Printer support and end-user training
-- Wi-Fi and networking support
-- Server support
-- Microsoft 365 and productivity tools
-- AI tools and automation
+## Market pages
+Markets tab lists every discovered market by category; each has a page at `/markets/<slug>` (for example `/markets/volatility-75`, deep-linkable). It shows live price, bias and confluence, a live chart with the latest unfilled supply/demand zones and FVGs drawn as boxes plus support/resistance lines, the technical state, the confluence breakdown, multi-timeframe alignment (4h/1h/15m/5m), a deterministic potential scenario (entry zone, invalidation, targets, estimated R:R, confirmation, labelled as analysis only), an on-demand AI explanation and a link to the History tab. Prices use each instrument's own decimal precision from Deriv's metadata.
 
-## Let's Connect
+## Journal screenshots
+Attach a chart screenshot to any journal entry (file picker, or paste an image into the form; also "Attach/Replace" per row, and View/Remove). Images are resized in the browser (max 1600px, JPEG), sent to the API as a data URL, and validated server-side: PNG/JPEG/WebP only, checked by magic bytes, max 2 MB, rate-limited. Storage: Supabase mode uses a private `journal-screenshots` bucket (run `0005_journal_screenshots.sql`) that only the API can read or write; dev mode writes to `data/screenshots/`. The storage path is set by the server and a client can never set or choose it; images are served only to the entry's owner and deleted with the entry. Free-tier note: Supabase Storage free tier is limited, so the 2 MB cap and resizing matter.
 
-I'm happy to connect with recruiters, developers, IT professionals, and teams looking for someone who can contribute across technical support and software development.
+## Scanner, Alerts and Settings pages
+**Scanner** (own page): scans every market on the chosen timeframe, then filters client-side by category, bias, HTF, structure, momentum, volatility, sweep, FVG, near supply/demand zone, **scenario status** (In entry zone, Waiting for pullback, Waiting: do not chase, Through the zone, Target already reached, Invalidated, No entry zone found, No scenario), minimum confluence and name search, and sorts by any column. A "near zone" means price is within 1 ATR of an active zone. The Scenario column and filter use the same scenario and live-entry logic as the market page's "Potential scenario" card, evaluated at the scan's latest close (hover a badge for the explanation). **Dist (ATR)** is how far price still is from the entry zone in ATRs (0 once inside or through it) and **R:R (plan)** is the scenario's planned reward-to-risk from the zone midpoint; both are sortable. A **Scenario direction** filter (bullish/bearish scenario) combines with the status filter. An **SMC** column and filters (SMC status: in entry zone, awaiting pullback, do not chase, entry level already reached, target already reached, invalidated, zone already used, too old, sweep seen with no setup yet, no SMC setup; SMC direction; and "SMC checks pass") use the same SMC read and live-entry logic as the market page's SMC card, on closed candles, checked against the latest price. **Presets**: save the current timeframe and filters under a name and re-apply them later; they are stored in this browser (localStorage), not in your account, so they do not follow you to another device. **Auto-refresh** re-runs the scan every 1, 2 or 5 minutes while the page is open and visible (the server caches each market for 60 s, so shorter intervals would add nothing). **Export CSV** downloads the rows currently shown, after filters, with the scan time and timeframe. Labeled a research tool; no "best trades" ranking. **Alerts** (own page): create any alert type, see status (active / triggered / paused) and last-trigger time, pause, re-arm and delete; changes reach the live engine immediately. **Settings** (run `0006_preferences.sql`): swing sensitivity (left/right candles, 2-6; applies to charts, market pages, history, scanner, overview, MTF and AI answers, while alerts and backtests always use 3/3), default timeframe, default market and browser notifications; stored per user.
 
-- **Portfolio:** https://marttin-wangari.vercel.app/
-- **LinkedIn:** https://linkedin.com/in/martin-wangari-586903230
-- **Email:** martindevs07@gmail.com
-- **GitHub:** https://github.com/SolezMartins
+## Security and operations
+**Headers:** the API sends helmet's secure headers (CSP, HSTS, nosniff, frame protection); `apps/web/public/_headers` has a matching policy for the static site (narrow `connect-src` to your API/Supabase origins). Terminate HTTPS at your proxy/host and set `TRUST_PROXY=true` so rate limits and audit use the real client IP. **Audit log** (run `0007_audit_logs.sql`): every successful mutation (alerts, journal, screenshots, backtests, preferences, chats, watchlists), rejected auth (HTTP and WebSocket, including bad origins) and rate-limit hits are recorded with user, action, resource id, status and IP, never request bodies, tokens or content; also written to the structured log; retention `AUDIT_RETENTION_DAYS`; readable only with the service role. **Structured logs:** JSON via pino with secrets redacted and query strings stripped (the WebSocket token), covering Deriv connection/subscription state, request retries, analysis/tick/persistence/alert/AI failures, and process-level unhandled errors; set `LOG_LEVEL`. **Deriv resilience:** requests are throttled (`DERIV_MIN_INTERVAL_MS`, default 125 ms; not verified against Deriv's published limits), retried up to 3 times with exponential backoff and jitter on timeouts, dropped connections and rate-limit errors, and the connection reconnects with backoff; a failing tick handler can no longer take down the feed. **Idle streams** (no client viewing, no active alert for 3 minutes) are released, including the Deriv tick subscription.
 
-<p align="center"><em>Building solutions. Solving problems. Growing through technology.</em></p>
+## Persisted analysis (Supabase mode, run `0008_analysis_tables.sql`)
+For every streamed market/timeframe (watched by a client or covered by an alert) at 5m or above, each candle close is archived: `indicator_values`, `market_structures`, `market_biases`, `confluence_scores`, `analysis_snapshots` (per candle), plus `swing_points`, `liquidity_zones` (equal highs/lows), `liquidity_events` (sweeps with confirmation and the 5-candle reaction), `supply_demand_zones`, `fair_value_gaps` (with fill %), `price_action_zones` (order-block-style potential zones) and `potential_setups` with `setup_events` (created, entered zone, invalidated, target 1/2 hit, expired) so past scenarios can be reviewed. Instruments carry category and slug; `market_categories` and `market_data_sources` (Deriv) are kept in sync. Writes are batched and best-effort; pruned every 6h (`RETENTION_ANALYSIS_*`; open setups older than 3 days are marked expired). Signed-in users have read-only access; saved AI explanations go to per-user `analysis_reports` (`GET/DELETE /api/reports`; read them on the **Reports** screen, which lists them newest first, shows the explanation and the analysis snapshot it was based on, and lets you delete them). Market pages show recent setups and their outcomes (`GET /api/setups/:symbol?tf=`). Only markets the server streams are archived; the scanner does not write. Lifecycle tracking is in memory, so setups open during a restart are expired by the prune job.
+
+## Trade signals, outcome tracking, performance and evidence (Supabase mode: also run `0009_journal_tracking.sql`)
+**Trade signal alert** (Alerts tab): when a candle closes with confluence at or above your minimum, HTF structure agreeing, R:R at least 1.5 and the entry still ahead of or inside the zone, a limit-style entry (zone midpoint, ATR-floored stop, first target) is added to the Journal. One live signal per market/timeframe/direction. **Outcome tracking**: the server follows each signal on live ticks: pending (waiting for the entry) -> filled -> win / loss / expired (100 candles), or missed (target ran without a fill, or no fill within 20 candles). Stops record the tick price that crossed them (can be worse than -1R); targets record the target price. The Journal shows status, exit and measured R, and you get a notification on fill and close. Without migration 0009 signals are still journaled but not tracked. **Performance** tab: win rate (Wilson range), average R (95% range), profit factor, max drawdown, equity curve, split by source, market, timeframe, **scenario status when the signal was created (in zone / waiting / do not chase; needs migration 0010, older signals show as "not recorded")**, confluence band and direction; groups under 30 trades are flagged. Auto signals use measured R, manual entries planned R. **Evidence** card (market page): `GET /api/evidence/:symbol?tf=&limit=&min=&slip=&fee=` replays the exact signal rule on recent candles with no lookahead (conservative fills: on the fill candle only the stop counts; a candle touching stop and target counts as a stop; optional fees and slippage inputs, off by default), reports in-sample/out-of-sample results and a plain verdict (too few trades / no measurable edge / losing / positive). Cached 10 minutes, 6 per minute, yields to the event loop. None of this predicts future results.
+
+## Keeping the API awake (Render free plan)
+Alerts, signal tracking, scenario-change alerts and the Deriv stream all run inside the `dmi-api` process, so they only work while it is awake. On Render's free plan a web service sleeps after about 15 minutes without requests, and nothing is evaluated while it sleeps. Options: use the `starter` plan set in `render.yaml` (the reliable choice), or on the free plan point an external uptime pinger (for example UptimeRobot or cron-job.org) at `https://<your-api>.onrender.com/api/status` every 10 minutes. A pinger only keeps an already running service awake; free plans also have a monthly hours allowance, so check Render's current free-tier terms before relying on it. Alerts that should have fired while the service was asleep are not replayed.
+
+## SMC (Smart Money Concepts) model
+`smcSetup` / `smcRead` in `packages/strategies` (pure, deterministic, closed candles only, no lookahead; every swing is confirmed by 3 later candles). A **bullish setup** needs, in order: (1) a liquidity sweep: a candle wicks below an untouched swing low and closes back above it; (2) a market structure shift within 12 candles: a close above the last swing high that preceded the sweep, with displacement (a bullish fair value gap, or a candle body of at least 1 ATR); (3) an entry zone: the last bearish candle before the move (order block), or the displacement FVG if there is none; (4) the entry sits in the discount half of the dealing range (premium for shorts); (5) a stop beyond the sweep extreme and the zone, at least 0.75 ATR from the entry; targets are untouched swing highs beyond the broken level; (6) estimated R:R at least 1.5 and the zone not yet touched. Bearish is the mirror. The market page has an **SMC card** (dealing range, premium/discount, the setup, a pass/fail checklist, live entry status, or a half-formed sweep waiting for its shift). **SMC signal alert** (Alerts tab; level 1 = require higher-timeframe agreement, 0 = do not): writes a pending limit-style Journal entry labelled `Auto signal: SMC model ...`, tracked like any signal (one live SMC signal per market/timeframe/direction). The **Performance** tab splits `auto SMC signal` from `auto confluence signal`, and the **Evidence** card has a strategy picker (Confluence rule / SMC model) that runs the same no-lookahead backtest on the SMC rule (`GET /api/evidence/:symbol?strategy=smc&htf=0|1`, with the same `slip`/`fee` inputs). SMC is a way of reading charts, not an edge: on synthetic indices (generated prices) there is no reason for these patterns to predict anything, so check the Evidence result before trusting a setup. SMC signals also record the scenario status (in zone / waiting / do not chase) and appear in the Performance split. No new database migration is needed beyond 0009 and 0010. The scenario alert kinds (`scenario_in_zone`, `scenario_invalidated`, `scenario_target`) work alongside it.
+
+## Not yet built
+- **Trade execution** is out of scope by design: this is an analysis-only tool.
+- **Dashboard chart**: FVGs and zones are not drawn there (they are drawn on market pages).
+- **Email alerts** and **Forex providers** (Deriv is the only data source).
+- **Per-screen shadcn refactor**: existing screens are styled through global element rules in `index.css`.
+- **Alerts evaluate only on streamed symbols** (every market with an active alert is streamed).
+- **Scanner presets** are per browser, not synced to your account.
+- **Fees in live outcome tracking**: signal outcomes in the Journal and Performance use raw R. Fees and slippage can be modeled only in backtests and the Evidence card, and only as your own assumptions.
+- **History tab**: FVG and zone boxes are listed, not drawn on the chart, and gaps inside stored data are not detected.
+- **Scenario and signal lifecycle tracking is in memory**: setups open during a server restart are expired by the prune job, and scenario-alert baselines are rebuilt on restart.
+- **Deriv request limits** (`DERIV_MIN_INTERVAL_MS`) are conservative defaults, not verified against Deriv's published limits.
+
+## Login screen
+`apps/web/src/Login.tsx` + `login.css` (scoped under `.lg`, so it cannot affect the rest of the app). Email and password through Supabase (sign in, create account, forgot password). The side panels (watchlist and chart) are decorative and labelled illustrative: they are not market data. There is no "Continue with Deriv" button because no Deriv OAuth flow is configured. **Forgot password** emails a Supabase reset link that returns to the site and shows a "Choose a new password" screen; add your static site URL under Supabase > Authentication > URL Configuration (Site URL and Redirect URLs) or the link will not come back to the app.
+
+## Interface
+Glass theme: translucent blurred panels over a soft gradient (`.glass` and `.bg-card` in `apps/web/src/index.css`). Navigation is `apps/web/src/Sidebar.tsx`: floating glass sidebar with a collapse button (state remembered in the browser), account row, page search, labelled sections, an accent pill on the active page and an unread count on Alerts. The product name shown in the interface is Deriv Market Intelligence (Deriv MI in the sidebar).

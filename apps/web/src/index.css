@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root { /* dark-first terminal theme; --background matches the chart canvas (#0b0e14) */
+    --background: 220 29% 6%; --foreground: 220 15% 85%; --card: 220 27% 8%; --muted: 220 22% 12%; --muted-foreground: 220 12% 60%;
+    --border: 215 24% 20%; --input: 215 22% 26%; --primary: 211 100% 52%; --primary-foreground: 0 0% 100%; --destructive: 0 72% 55%; --ring: 211 100% 60%;
+    --bull: 173 58% 45%; --bear: 1 83% 63%; --radius: 0.625rem; color-scheme: dark;
+  }
+  * { @apply border-border; }
+  body { @apply font-sans text-[13px] text-foreground antialiased; background: #060b14; }
+  body::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(620px circle at 10% 6%, rgba(22,139,255,.20), transparent 62%), radial-gradient(700px circle at 92% 18%, rgba(57,224,162,.11), transparent 62%), radial-gradient(820px circle at 55% 105%, rgba(110,80,255,.14), transparent 62%); }
+  /* Global element styling so every screen matches the design system; new UI should use components/ui */
+  button { @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[.06] px-2.5 py-1 text-xs font-medium transition-colors hover:bg-white/[.12] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50; }
+  input, select { @apply h-8 rounded-lg border border-white/10 bg-black/25 px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring; }
+  input[type='checkbox'] { @apply h-3.5 w-3.5 accent-primary align-middle; }
+  input[type='range'] { @apply h-auto border-0 p-0 accent-primary; }
+  table { @apply w-full border-collapse text-xs; }
+  th { @apply py-1.5 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground; }
+  td { @apply border-t border-border py-1.5 tabular-nums; }
+  tbody tr:hover td { @apply bg-muted/40; }
+  pre { @apply whitespace-pre-wrap rounded-lg border border-border bg-card p-3 font-mono text-xs; }
+  a { @apply text-primary hover:underline; }
+  small { @apply text-muted-foreground; }
+  ::-webkit-scrollbar { @apply h-2 w-2; } ::-webkit-scrollbar-thumb { @apply rounded bg-input; }
+}
+
+/* Glass surfaces: translucent, blurred, hairline light edge. Every panel that used bg-card picks this up. */
+.glass, .bg-card { background: linear-gradient(145deg, hsl(218 32% 16% / .52), hsl(220 34% 9% / .42)); -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%); border: 1px solid rgba(255,255,255,.08); box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 10px 36px rgba(0,0,0,.28); }
+.glass .bg-card, .glass .glass { box-shadow: inset 0 1px 0 rgba(255,255,255,.05); }
+.bg-muted\/40, .bg-muted { background-color: hsl(var(--muted) / .45); }
+.sb { transition: width .28s cubic-bezier(.2,.8,.2,1); }
+.sb-item { transition: background-color .18s, color .18s, transform .18s; }
+.sb-item:active { transform: scale(.985); }
+.sb-item.sb-active { color: #fff; background: linear-gradient(105deg, #0879f2, #0c9dff); box-shadow: 0 6px 20px rgba(8,121,242,.35), inset 0 1px 0 rgba(255,255,255,.25); }
+.sb-item.sb-active:hover { background: linear-gradient(105deg, #0a82ff, #1aa5ff); }
+.sb-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.15) transparent; }
+@media (prefers-reduced-motion: reduce) { .sb, .sb-item { transition: none; } }
+
+/* Native dropdown lists: the popup takes the control's background, so give it a solid dark one (translucent glass turned it white). */
+select { background-color: #0d1525; color: #e6eefc; color-scheme: dark; }
+select option, select optgroup { background-color: #0d1525; color: #e6eefc; }
+select option:checked { background-color: #12427a; color: #fff; }
+.sb-tip { position: fixed; z-index: 60; transform: translateY(-50%); pointer-events: none; white-space: nowrap; padding: 6px 11px; border-radius: 9px; font-size: 12px; font-weight: 500; color: #eaf2ff; background: linear-gradient(145deg, rgba(24,38,60,.92), rgba(11,19,33,.92)); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.12); box-shadow: 0 8px 24px rgba(0,0,0,.45); animation: sb-tip-in .14s ease-out both; }
+.sb-tip::before { content: ''; position: absolute; left: -5px; top: 50%; width: 9px; height: 9px; transform: translateY(-50%) rotate(45deg); background: rgba(24,38,60,.95); border-left: 1px solid rgba(255,255,255,.12); border-bottom: 1px solid rgba(255,255,255,.12); }
+@keyframes sb-tip-in { from { opacity: 0; transform: translate(-6px, -50%); } to { opacity: 1; transform: translate(0, -50%); } }
+@media (prefers-reduced-motion: reduce) { .sb-tip { animation: none; } }

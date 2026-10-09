@@ -1,0 +1,50 @@
+# Render Blueprint: one click deploys the API (web service) and the web app (static site).
+# New > Blueprint > pick this repo. Render will ask for the three values marked sync:false.
+services:
+  - type: web
+    name: dmi-api
+    runtime: node
+    plan: starter            # free works for testing but sleeps after ~15 min idle (stops the Deriv stream and alerts). Alerts, signal tracking and
+                             # scenario-change alerts only run while this service is awake: use a paid plan, or see README "Keeping the API awake" for the free tier.
+    buildCommand: npm install --include=dev
+    startCommand: npx tsx apps/api/src/server.ts
+    healthCheckPath: /api/status
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: ROLE
+        value: all
+      - key: TRUST_PROXY
+        value: "true"
+      - key: DERIV_APP_ID
+        value: "1089"        # public default; replace with your own app id from api.deriv.com
+      - key: WEB_ORIGIN
+        sync: false          # URL of the dmi-web static site, e.g. https://dmi-web.onrender.com (no trailing slash)
+      - key: GEMINI_API_KEY
+        sync: false          # optional, leave blank to run without AI
+      # Supabase login + persistence (see README: run migrations 0001-0010 first, or paste supabase/all_migrations.sql into the Supabase SQL editor)
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+  - type: web
+    name: dmi-web
+    runtime: static
+    buildCommand: npm install --include=dev && npm run build -w apps/web
+    staticPublishPath: apps/web/dist
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: VITE_API_URL
+        sync: false          # URL of dmi-api, e.g. https://dmi-api.onrender.com (no trailing slash)
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
