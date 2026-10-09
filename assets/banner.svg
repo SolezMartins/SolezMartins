@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="260" viewBox="0 0 1200 260" role="img" aria-labelledby="title desc">
+  <title id="title">Martin Wangari — Software Developer and IT Systems Support Technician</title>
+  <desc id="desc">A dark navy banner with teal and blue geometric accents.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#071727"/><stop offset="1" stop-color="#102b43"/></linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#35e0d0"/><stop offset="1" stop-color="#43a9ff"/></linearGradient>
+  </defs>
+  <rect width="1200" height="260" rx="18" fill="url(#bg)"/>
+  <path d="M0 0H280L90 260H0Z" fill="#0a3854" opacity=".72"/>
+  <path d="M1200 0H1045L900 260H1055Z" fill="#0d3653" opacity=".8"/>
+  <path d="M1000 0H1080L940 260H860Z" fill="#123e60" opacity=".5"/>
+  <circle cx="1050" cy="48" r="112" fill="none" stroke="#1a5a77" stroke-width="1.5" opacity=".8"/>
+  <circle cx="1050" cy="48" r="82" fill="none" stroke="#1a5a77" stroke-width="1.5" opacity=".6"/>
+  <path d="M0 220H1200" stroke="#1d526b" stroke-width="1"/>
+  <rect x="56" y="54" width="7" height="145" rx="3.5" fill="url(#accent)"/>
+  <text x="88" y="96" fill="#f4f9ff" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="43" font-weight="700">Martin Wangari</text>
+  <text x="90" y="139" fill="#8fe7e0" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="22" font-weight="600">SOFTWARE DEVELOPER</text>
+  <text x="90" y="172" fill="#c6d9e8" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="20">IT Systems Support Technician</text>
+  <circle cx="96" cy="203" r="4" fill="#45e0d0"/>
+  <text x="111" y="209" fill="#b8cbd9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15">Nairobi, Kenya</text>
+  <text x="1095" y="115" text-anchor="middle" fill="url(#accent)" font-family="Consolas,monospace" font-size="50" font-weight="700">&lt;/&gt;</text>
+  <text x="1095" y="147" text-anchor="middle" fill="#a8c5d8" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" letter-spacing="2">BUILD · SUPPORT · SOLVE</text>
+</svg>
