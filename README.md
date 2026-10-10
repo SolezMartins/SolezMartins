@@ -101,3 +101,5 @@ Alerts, signal tracking, scenario-change alerts and the Deriv stream all run ins
 
 ## Interface
 Glass theme: translucent blurred panels over a soft gradient (`.glass` and `.bg-card` in `apps/web/src/index.css`). Navigation is `apps/web/src/Sidebar.tsx`: floating glass sidebar with a collapse button (state remembered in the browser), account row, page search, labelled sections, an accent pill on the active page and an unread count on Alerts. The product name shown in the interface is Deriv Market Intelligence (Deriv MI in the sidebar).
+
+Login side panels (`apps/web/src/LoginMarkets.tsx`): the browser connects straight to Deriv's public tick feed (no token needed for market data) for Volatility 10/75/100, Boom 1000 and Crash 1000, shows live prices with the 24 h change and builds 10-second candles for the selected market. If the feed cannot be reached, or goes quiet for 20 seconds, the panels switch to a simulated random walk and say so (SIMULATED badge and footer text). `VITE_DERIV_APP_ID` optionally sets the app id used for the legacy endpoint.
